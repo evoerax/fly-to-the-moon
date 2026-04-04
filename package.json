@@ -1,0 +1,51 @@
+{
+  "name": "fly-to-moon",
+  "version": "0.0.1",
+  "description": "Humans fly to space. AI does the work. — Fly to the moon, fly to Mars",
+  "type": "module",
+  "bin": {
+    "fly-to-moon": "dist/cli.mjs"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "start": "node dist/cli.mjs",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src",
+    "test": "npm run build && vitest run",
+    "test:e2e": "npm run build && vitest run test/e2e.test.ts",
+    "test:coverage": "vitest run --coverage --exclude test/e2e.test.ts"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "js-yaml": "^4.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "prettier": "^3.0.0",
+    "tsdown": "^0.21.7",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.2"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/evoerax/fly-to-the-moon"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
