@@ -1,6 +1,6 @@
 node_modules/
 dist/
-.fttm/runs/
+.fttm/
 assets/
 .ruff_cache/
 __pycache__/

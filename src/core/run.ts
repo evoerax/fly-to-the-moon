@@ -30,27 +30,11 @@ function writeSchemaFile(schemaPath: string): void {
 }
 
 function ensureRunMetadataIgnored(cwd: string): void {
-  const excludePath = execFileSync(
-    "git",
-    ["rev-parse", "--git-path", "info/exclude"],
-    { cwd, encoding: "utf-8" },
-  ).trim();
-  const resolved = isAbsolute(excludePath)
-    ? excludePath
-    : join(cwd, excludePath);
-  const entry = ".fttm/runs/";
-  mkdirSync(dirname(resolved), { recursive: true });
-
-  if (existsSync(resolved)) {
-    const content = readFileSync(resolved, "utf-8");
-    if (content.split("\n").some((line) => line.trim() === entry)) return;
-    const separator = content.length > 0 && !content.endsWith("\n") ? "\n" : "";
-    appendFileSync(resolved, `${separator}${entry}\n`, "utf-8");
-  } else {
-    // This ignore rule is runtime metadata, so keep it local to the clone
-    // instead of mutating tracked .gitignore state on startup.
-    writeFileSync(resolved, `${entry}\n`, "utf-8");
-  }
+  const ftmDir = join(cwd, ".fttm");
+  const gitignorePath = join(ftmDir, ".gitignore");
+  if (existsSync(gitignorePath)) return;
+  mkdirSync(ftmDir, { recursive: true });
+  writeFileSync(gitignorePath, "*\n", "utf-8");
 }
 
 export function setupRun(
