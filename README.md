@@ -191,6 +191,34 @@ agentPathOverride:
 Paths may be absolute, bare executable names already on your `PATH`, `~`-prefixed, or relative to the config directory (`~/.fttm/`). The override replaces only the binary name; all standard arguments are preserved, so the replacement must be CLI-compatible with the original agent. On Windows, `.cmd` and `.bat` wrappers are supported, including bare names resolved from `PATH`. For `rovodev`, the override must point to an `acli`-compatible binary since fttm invokes it as `<bin> rovodev serve ...`.
 When sleep prevention is enabled, `fttm` uses the native mechanism for your OS: `caffeinate` on macOS, `systemd-inhibit` on Linux, and a small PowerShell helper backed by `SetThreadExecutionState` on Windows.
 
+### Sleep Prevention
+
+By default, `fttm` prevents your computer from sleeping while running:
+
+| OS      | Command                                | What it does                         |
+| ------- | -------------------------------------- | ------------------------------------ |
+| macOS   | `caffeinate -i -w <pid>`               | Prevents idle sleep until fttm exits |
+| Linux   | `systemd-inhibit`                      | Blocks sleep via systemd logind      |
+| Windows | PowerShell + `SetThreadExecutionState` | Calls Windows sleep blocker API      |
+
+You can disable this with `--prevent-sleep off`.
+
+## Local Run Metadata
+
+`fttm` stores run data in `.fttm/runs/<run-id>/` within your project:
+
+```
+.fttm/
+└── runs/
+    └── <run-id>/
+        ├── notes.md          # Iteration history (cumulative)
+        ├── prompt.md         # Original prompt
+        ├── base-commit       # Git commit hash where run started
+        └── output-schema.json # JSON schema for agent output
+```
+
+This folder is automatically added to `.gitignore` — it never gets committed.
+
 ## Debug Logs
 
 Set `FTtm_DEBUG_LOG_PATH` to capture lifecycle events as JSONL while debugging a run:
