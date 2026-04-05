@@ -402,7 +402,11 @@ program
       const orchestratorPromise = orchestrator
         .start()
         .finally(() => {
-          renderer.stop();
+          const keepTui =
+            orchestrator.getState().status === "aborted" && process.stdin.isTTY;
+          if (!keepTui) {
+            renderer.stop();
+          }
         })
         .catch((err) => {
           exitAltScreen();
