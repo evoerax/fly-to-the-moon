@@ -29,31 +29,36 @@ fttm is an autonomous coding agent orchestrator — each iteration makes one sma
 
 ## Quick Start
 
+### Install
+
 ```sh
-$ fttm "reduce complexity of the codebase without changing functionality"
-# have a good sleep
+npm install -g fly-to-moon
 ```
 
-```sh
-$ fttm "reduce complexity of the codebase without changing functionality" \
-    --max-iterations 10 \
-    --max-tokens 5000000
-# have a good nap
-```
-
-### OpenCode with Specific Model
+### OpenCode
 
 ```sh
-$ fttm "implement a new feature" \
+fttm "your task here" \
     --agent opencode \
     --model minimax-cn-coding-plan/MiniMax-M2.7
-# foreground mode, model displayed in UI
+```
+
+### Claude Code
+
+```sh
+fttm "your task here" --agent claude
+```
+
+### Codex
+
+```sh
+fttm "your task here" --agent codex
 ```
 
 ### Background/Daemon Mode
 
 ```sh
-$ fttm "implement a new feature" \
+fttm "your task here" \
     --agent opencode \
     --model minimax-cn-coding-plan/MiniMax-M2.7 \
     --max-iterations 50 \
@@ -61,22 +66,22 @@ $ fttm "implement a new feature" \
 # runs in background, returns immediately to terminal
 ```
 
+### Skills
+
+Use the `fttm` skill for interactive command generation:
+
+```
+fttm skill -> interactive fttm command builder
+```
+
 Run `fttm` from inside a Git repository with a clean working tree. If you are starting from a plain directory, run `git init` first.
 `fttm` supports macOS, Linux, and Windows.
 
-## Install
-
-**npm**
+## Install (From source)
 
 ```sh
-npm install -g fly-to-moon
-```
-
-**From source**
-
-```sh
-git clone https://github.com/YOUR_USERNAME/fttm.git
-cd fttm
+git clone https://github.com/evoerax/fly-to-the-moon.git
+cd fly-to-the-moon
 npm install
 npm run build
 npm link
