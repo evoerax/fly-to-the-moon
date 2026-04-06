@@ -4,7 +4,7 @@
   "description": "Humans fly to space. AI does the work. — Fly to the moon, fly to Mars",
   "type": "module",
   "bin": {
-    "fly-to-moon": "dist/cli.mjs"
+    "fttm": "dist/cli.mjs"
   },
   "scripts": {
     "build": "tsdown",
