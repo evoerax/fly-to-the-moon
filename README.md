@@ -68,7 +68,13 @@ fttm "your task here" \
 
 ### Skills
 
-Use the `fttm` skill for interactive command generation:
+Install the `fttm` skill for interactive command generation:
+
+```sh
+npx skills add evoerax/fly-to-the-moon --skill fttm
+```
+
+Then use it:
 
 ```
 fttm skill -> interactive fttm command builder
