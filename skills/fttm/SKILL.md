@@ -21,7 +21,7 @@ Ask these together in one message:
 
 1. **Objective** — What is the coding task/goal? (required)
 2. **Agent** — Which agent? Options: `claude` (default), `codex`, `rovodev`, `opencode`
-3. **Model** — If agent is `opencode`, ask which model (e.g., `minimax-cn-coding-plan/MiniMax-M2.7`)
+3. **Model** — Ask which model to use (e.g., `minimax-cn-coding-plan/MiniMax-M2.7`)
 
 ### Round 2 — Limits & Mode (if relevant)
 

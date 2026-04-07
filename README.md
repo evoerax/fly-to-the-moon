@@ -166,16 +166,16 @@ npm link
 
 ### Flags
 
-| Flag                     | Description                                                                    | Default                |
-| ------------------------ | ------------------------------------------------------------------------------ | ---------------------- |
-| `--agent <agent>`        | Agent to use (`claude`, `codex`, `rovodev`, or `opencode`)                     | config file (`claude`) |
-| `--model <model>`        | Model to use with opencode agent (e.g., `minimax-cn-coding-plan/MiniMax-M2.7`) | agent default          |
-| `--max-iterations <n>`   | Abort after `n` total iterations                                               | unlimited              |
-| `--max-tokens <n>`       | Abort after `n` total input+output tokens                                      | unlimited              |
-| `--detach`               | Run in daemon mode (background execution with `--max-iterations`)              | `false` (foreground)   |
-| `--prevent-sleep <mode>` | Prevent system sleep during the run (`on`/`off` or `true`/`false`)             | config file (`on`)     |
-| `--commit`               | Commit both successful and failed iterations (default: only on success)        | `false`                |
-| `--version`              | Show version                                                                   |                        |
+| Flag                     | Description                                                                          | Default                |
+| ------------------------ | ------------------------------------------------------------------------------------ | ---------------------- |
+| `--agent <agent>`        | Agent to use (`claude`, `codex`, `rovodev`, or `opencode`)                           | config file (`claude`) |
+| `--model <model>`        | Model to use (format: `provider/model`, e.g., `minimax-cn-coding-plan/MiniMax-M2.7`) | agent default          |
+| `--max-iterations <n>`   | Abort after `n` total iterations                                                     | unlimited              |
+| `--max-tokens <n>`       | Abort after `n` total input+output tokens                                            | unlimited              |
+| `--detach`               | Run in daemon mode (background execution with `--max-iterations`)                    | `false` (foreground)   |
+| `--prevent-sleep <mode>` | Prevent system sleep during the run (`on`/`off` or `true`/`false`)                   | config file (`on`)     |
+| `--commit`               | Commit both successful and failed iterations (default: only on success)              | `false`                |
+| `--version`              | Show version                                                                         |                        |
 
 ## Configuration
 
