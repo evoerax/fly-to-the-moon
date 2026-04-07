@@ -13,6 +13,13 @@
 - **renderer:** adapt content to viewport ([#20](https://github.com/kunchenguid/gnhf/issues/20)) ([592d80b](https://github.com/kunchenguid/gnhf/commit/592d80b6d9befb9a38f44cc19346e736c01a5220))
 - **renderer:** randomize star field seeds ([#22](https://github.com/kunchenguid/gnhf/issues/22)) ([e658f32](https://github.com/kunchenguid/gnhf/commit/e658f32004bc54b66ef3c23fec85857f1132fece))
 
+## [0.1.18](https://github.com/evoerax/fly-to-the-moon/compare/v0.1.17...v0.1.18) (2026-04-08)
+
+### Documentation
+
+- fix changelog compare URL to point to our fork
+- add `--commit` flag to README and skill documentation
+
 ## [0.1.17](https://github.com/evoerax/fly-to-the-moon/compare/v0.1.16...v0.1.17) (2026-04-08)
 
 ### Features

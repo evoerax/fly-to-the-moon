@@ -1,6 +1,6 @@
 {
   "name": "fly-to-moon",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Humans fly to space. AI does the work. — Fly to the moon, fly to Mars",
   "type": "module",
   "bin": {
