@@ -38,12 +38,6 @@ npm install -g fly-to-moon
 ### Update
 
 ```sh
-npm install -g fly-to-moon@latest
-```
-
-Or force reinstall:
-
-```sh
 npm install -g fly-to-moon@latest --force
 ```
 
