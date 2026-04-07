@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.21 (2026-04-08)
+
+### Features
+
+- **agents:** enhance Codex agent with richer event handling — `turn.started`, `item.started` (command_execution, web_search, mcp_tool_call), `item.completed reasoning`, `turn.failed`, and `error` events now surface meaningful progress updates to the UI (e.g., "Running: ls", "Searching: how to fix...", "Using tool: github.create_issue")
+- **agents:** Codex agent now surfaces clear error messages when `turn.failed` or `error` events occur, instead of silent failures
+
 ## 0.1.18 (2026-04-08)
 
 ### Features

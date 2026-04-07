@@ -21,6 +21,17 @@ function createMockProcess() {
   return proc as typeof proc & ReturnType<typeof spawn>;
 }
 
+function emitJsonl(
+  proc: ReturnType<typeof createMockProcess>,
+  events: unknown[],
+  closeCode = 0,
+) {
+  for (const event of events) {
+    proc.stdout.emit("data", Buffer.from(`${JSON.stringify(event)}\n`));
+  }
+  proc.emit("close", closeCode, null);
+}
+
 describe("CodexAgent", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -142,5 +153,164 @@ describe("CodexAgent", () => {
       { stdio: "ignore" },
     );
     expect(proc.kill).not.toHaveBeenCalled();
+  });
+
+  it("surfaces high-signal progress updates from started and completed items", async () => {
+    const proc = createMockProcess();
+    mockSpawn.mockReturnValue(proc);
+    const onMessage = vi.fn();
+    const onUsage = vi.fn();
+    const agent = new CodexAgent("/tmp/schema.json");
+
+    const promise = agent.run("test prompt", "/work/dir", {
+      onMessage,
+      onUsage,
+    });
+
+    emitJsonl(proc, [
+      { type: "turn.started" },
+      {
+        type: "item.started",
+        item: {
+          type: "command_execution",
+          command: ["npm", "test"],
+        },
+      },
+      {
+        type: "item.started",
+        item: {
+          type: "web_search",
+          query: "vitest child process mocking",
+        },
+      },
+      {
+        type: "item.completed",
+        item: {
+          type: "reasoning",
+          text: "Investigating why the child process exits before sending the final message.",
+        },
+      },
+      {
+        type: "item.completed",
+        item: {
+          type: "agent_message",
+          text: JSON.stringify({
+            success: true,
+            summary: "done",
+            key_changes_made: ["a"],
+            key_learnings: ["b"],
+          }),
+        },
+      },
+      {
+        type: "turn.completed",
+        usage: {
+          input_tokens: 12,
+          cached_input_tokens: 3,
+          output_tokens: 5,
+        },
+      },
+    ]);
+
+    await expect(promise).resolves.toEqual({
+      output: {
+        success: true,
+        summary: "done",
+        key_changes_made: ["a"],
+        key_learnings: ["b"],
+      },
+      usage: {
+        inputTokens: 12,
+        outputTokens: 5,
+        cacheReadTokens: 3,
+        cacheCreationTokens: 0,
+      },
+    });
+    expect(onMessage).toHaveBeenNthCalledWith(1, "Starting turn...");
+    expect(onMessage).toHaveBeenNthCalledWith(2, "Running: npm test");
+    expect(onMessage).toHaveBeenNthCalledWith(
+      3,
+      "Searching: vitest child process mocking",
+    );
+    expect(onMessage).toHaveBeenNthCalledWith(
+      4,
+      "Reasoning: Investigating why the child process exits before sending ...",
+    );
+    expect(onMessage).toHaveBeenLastCalledWith(
+      '{"success":true,"summary":"done","key_changes_made":["a"],"key_learnings":["b"]}',
+    );
+    expect(onUsage).toHaveBeenCalledWith({
+      inputTokens: 12,
+      outputTokens: 5,
+      cacheReadTokens: 3,
+      cacheCreationTokens: 0,
+    });
+  });
+
+  it("rejects immediately on turn.failed events", async () => {
+    const proc = createMockProcess();
+    mockSpawn.mockReturnValue(proc);
+    const agent = new CodexAgent("/tmp/schema.json");
+
+    const promise = agent.run("test prompt", "/work/dir");
+
+    emitJsonl(proc, [
+      {
+        type: "turn.failed",
+        error: {
+          message: "model overloaded",
+        },
+      },
+    ]);
+
+    await expect(promise).rejects.toThrow("codex turn failed: model overloaded");
+  });
+
+  it("rejects immediately on error events", async () => {
+    const proc = createMockProcess();
+    mockSpawn.mockReturnValue(proc);
+    const agent = new CodexAgent("/tmp/schema.json");
+
+    const promise = agent.run("test prompt", "/work/dir");
+
+    emitJsonl(proc, [
+      {
+        type: "error",
+        message: "connection dropped",
+      },
+    ]);
+
+    await expect(promise).rejects.toThrow("codex error: connection dropped");
+  });
+
+  it("fails with a clearer error when no final agent_message is produced", async () => {
+    const proc = createMockProcess();
+    mockSpawn.mockReturnValue(proc);
+    const agent = new CodexAgent("/tmp/schema.json");
+
+    const promise = agent.run("test prompt", "/work/dir");
+
+    emitJsonl(proc, [
+      { type: "turn.started" },
+      {
+        type: "item.completed",
+        item: {
+          type: "reasoning",
+          text: "Still working",
+        },
+      },
+      {
+        type: "turn.completed",
+        usage: {
+          input_tokens: 1,
+          cached_input_tokens: 0,
+          output_tokens: 1,
+        },
+      },
+    ]);
+
+    await expect(promise).rejects.toThrow(
+      "codex completed without a final agent_message",
+    );
   });
 });

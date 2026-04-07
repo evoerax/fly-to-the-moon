@@ -15,7 +15,15 @@ import {
 
 interface CodexItemCompleted {
   type: "item.completed";
-  item: { type: string; text: string };
+  item: {
+    type: string;
+    text?: string;
+    command?: string[];
+    query?: string;
+    title?: string;
+    name?: string;
+    tool_name?: string;
+  };
 }
 
 interface CodexTurnCompleted {
@@ -27,7 +35,82 @@ interface CodexTurnCompleted {
   };
 }
 
-type CodexEvent = CodexItemCompleted | CodexTurnCompleted | { type: string };
+interface CodexItemStarted {
+  type: "item.started";
+  item: {
+    type: string;
+    command?: string[];
+    query?: string;
+    title?: string;
+    name?: string;
+    tool_name?: string;
+  };
+}
+
+interface CodexTurnStarted {
+  type: "turn.started";
+}
+
+interface CodexTurnFailed {
+  type: "turn.failed";
+  error?: {
+    message?: string;
+  };
+}
+
+interface CodexErrorEvent {
+  type: "error";
+  message?: string;
+  error?: {
+    message?: string;
+  };
+}
+
+type CodexEvent =
+  | CodexItemCompleted
+  | CodexItemStarted
+  | CodexTurnCompleted
+  | CodexTurnStarted
+  | CodexTurnFailed
+  | CodexErrorEvent
+  | { type: string };
+
+function truncateStatus(text: string, maxLength = 60): string {
+  return text.length <= maxLength ? text : `${text.slice(0, maxLength - 3)}...`;
+}
+
+function extractEventErrorMessage(event: CodexTurnFailed | CodexErrorEvent): string {
+  return (
+    event.error?.message ??
+    ("message" in event ? event.message : undefined) ??
+    "unknown error"
+  );
+}
+
+function formatStartedItemMessage(item: CodexItemStarted["item"]): string | null {
+  if (item.type === "command_execution") {
+    return item.command?.length ? `Running: ${item.command.join(" ")}` : "Running command...";
+  }
+
+  if (item.type === "web_search") {
+    return item.query ? `Searching: ${item.query}` : "Searching...";
+  }
+
+  if (item.type === "mcp_tool_call") {
+    const toolName = item.tool_name ?? item.name ?? item.title;
+    return toolName ? `Using tool: ${toolName}` : "Using tool...";
+  }
+
+  return null;
+}
+
+function formatCompletedItemMessage(item: CodexItemCompleted["item"]): string | null {
+  if (item.type === "reasoning" && item.text?.trim()) {
+    return `Reasoning: ${truncateStatus(item.text.trim())}`;
+  }
+
+  return null;
+}
 
 interface CodexAgentDeps {
   bin?: string;
@@ -136,6 +219,7 @@ export class CodexAgent implements Agent {
       }
 
       let lastAgentMessage: string | null = null;
+      let terminalError: Error | null = null;
       const cumulative: TokenUsage = {
         inputTokens: 0,
         outputTokens: 0,
@@ -144,6 +228,19 @@ export class CodexAgent implements Agent {
       };
 
       parseJSONLStream<CodexEvent>(child.stdout!, logStream, (event) => {
+        if (event.type === "turn.started") {
+          onMessage?.("Starting turn...");
+          return;
+        }
+
+        if (event.type === "item.started" && "item" in event) {
+          const message = formatStartedItemMessage((event as CodexItemStarted).item);
+          if (message) {
+            onMessage?.(message);
+          }
+          return;
+        }
+
         if (
           event.type === "item.completed" &&
           "item" in event &&
@@ -151,6 +248,17 @@ export class CodexAgent implements Agent {
         ) {
           lastAgentMessage = (event as CodexItemCompleted).item.text;
           onMessage?.(lastAgentMessage);
+          return;
+        }
+
+        if (event.type === "item.completed" && "item" in event) {
+          const message = formatCompletedItemMessage(
+            (event as CodexItemCompleted).item,
+          );
+          if (message) {
+            onMessage?.(message);
+          }
+          return;
         }
 
         if (event.type === "turn.completed" && "usage" in event) {
@@ -159,12 +267,31 @@ export class CodexAgent implements Agent {
           cumulative.outputTokens += u.output_tokens ?? 0;
           cumulative.cacheReadTokens += u.cached_input_tokens ?? 0;
           onUsage?.({ ...cumulative });
+          return;
+        }
+
+        if (event.type === "turn.failed") {
+          terminalError = new Error(
+            `codex turn failed: ${extractEventErrorMessage(event)}`,
+          );
+          return;
+        }
+
+        if (event.type === "error") {
+          terminalError = new Error(
+            `codex error: ${extractEventErrorMessage(event)}`,
+          );
         }
       });
 
       setupChildProcessHandlers(child, "codex", logStream, reject, () => {
+        if (terminalError) {
+          reject(terminalError);
+          return;
+        }
+
         if (!lastAgentMessage) {
-          reject(new Error("codex returned no agent message"));
+          reject(new Error("codex completed without a final agent_message"));
           return;
         }
 
