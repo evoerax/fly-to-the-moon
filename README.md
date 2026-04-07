@@ -174,6 +174,7 @@ npm link
 | `--max-tokens <n>`       | Abort after `n` total input+output tokens                                      | unlimited              |
 | `--detach`               | Run in daemon mode (background execution with `--max-iterations`)              | `false` (foreground)   |
 | `--prevent-sleep <mode>` | Prevent system sleep during the run (`on`/`off` or `true`/`false`)             | config file (`on`)     |
+| `--commit`               | Commit both successful and failed iterations (default: only on success)        | `false`                |
 | `--version`              | Show version                                                                   |                        |
 
 ## Configuration
