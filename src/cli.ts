@@ -11,7 +11,11 @@ import process from "node:process";
 import { createInterface } from "node:readline";
 import { Command, InvalidArgumentError } from "commander";
 import { loadConfig } from "./core/config.js";
-import { appendDebugLog } from "./core/debug-log.js";
+import {
+  appendDebugLog,
+  initDebugLog,
+  serializeError,
+} from "./core/debug-log.js";
 import {
   ensureCleanWorkingTree,
   createBranch,
@@ -360,8 +364,21 @@ program
         }
       }
 
+      initDebugLog(runInfo.logPath);
       appendDebugLog("run:start", {
         args: process.argv.slice(2),
+        runId: runInfo.runId,
+        runDir: runInfo.runDir,
+        agent: config.agent,
+        promptLength: prompt.length,
+        promptFromStdin,
+        startIteration,
+        maxIterations: options.maxIterations,
+        maxTokens: options.maxTokens,
+        preventSleep: config.preventSleep,
+        platform: process.platform,
+        nodeVersion: process.version,
+        fttmVersion: packageVersion,
       });
 
       const agent = createAgent(
@@ -416,6 +433,9 @@ program
           }
         })
         .catch((err) => {
+          appendDebugLog("orchestrator:fatal", {
+            error: serializeError(err),
+          });
           exitAltScreen();
           die(err instanceof Error ? err.message : String(err));
         });
@@ -449,9 +469,19 @@ program
         await sleepPreventionCleanup?.();
       }
 
-      appendDebugLog("run:complete", {
-        signal: shutdownSignal,
-      });
+      {
+        const finalState = orchestrator.getState();
+        appendDebugLog("run:complete", {
+          signal: shutdownSignal,
+          status: finalState.status,
+          iterations: finalState.currentIteration,
+          successCount: finalState.successCount,
+          failCount: finalState.failCount,
+          totalInputTokens: finalState.totalInputTokens,
+          totalOutputTokens: finalState.totalOutputTokens,
+          commitCount: finalState.commitCount,
+        });
+      }
 
       if (shutdownSignal) {
         process.exit(getSignalExitCode(shutdownSignal));

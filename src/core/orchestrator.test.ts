@@ -37,6 +37,7 @@ const runInfo: RunInfo = {
   promptPath: "/repo/.fttm/runs/run-abc/prompt.md",
   notesPath: "/repo/.fttm/runs/run-abc/notes.md",
   schemaPath: "/repo/.fttm/runs/run-abc/output-schema.json",
+  logPath: "/repo/.fttm/runs/run-abc/debug.jsonl",
   baseCommit: "base123",
   baseCommitPath: "/repo/.fttm/runs/run-abc/base-commit",
 };

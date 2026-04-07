@@ -12,7 +12,7 @@ import type {
   AgentRunOptions,
   TokenUsage,
 } from "./types.js";
-import { appendDebugLog } from "../debug-log.js";
+import { appendDebugLog, serializeError } from "../debug-log.js";
 import { shutdownChildProcess } from "./managed-process.js";
 
 interface RovoDevRequestUsageEvent {
@@ -233,6 +233,14 @@ export class RovoDevAgent implements Agent {
       if (runController.signal.aborted || isAbortError(error)) {
         throw createAbortError();
       }
+      appendDebugLog("rovodev:run:error", {
+        sessionId,
+        cwd,
+        error: serializeError(error),
+        serverClosed: this.server?.closed ?? true,
+        serverStderr: this.server?.stderr.slice(-2048),
+        serverStdout: this.server?.stdout.slice(-2048),
+      });
       throw error;
     } finally {
       signal?.removeEventListener("abort", onAbort);
@@ -732,13 +740,25 @@ export class RovoDevAgent implements Agent {
     }
 
     const signal = withTimeoutSignal(options.signal, options.timeoutMs);
-    const response = await this.fetchFn(`${server.baseUrl}${path}`, {
-      method: options.method,
-      headers,
-      body:
-        options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await this.fetchFn(`${server.baseUrl}${path}`, {
+        method: options.method,
+        headers,
+        body:
+          options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal,
+      });
+    } catch (error) {
+      appendDebugLog("rovodev:request:error", {
+        method: options.method,
+        path,
+        timeoutMs: options.timeoutMs,
+        error: serializeError(error),
+        serverClosed: server.closed,
+      });
+      throw error;
+    }
 
     if (!response.ok) {
       const body = await response.text();

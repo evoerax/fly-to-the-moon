@@ -17,6 +17,7 @@ export interface RunInfo {
   promptPath: string;
   notesPath: string;
   schemaPath: string;
+  logPath: string;
   baseCommit: string;
   baseCommitPath: string;
 }
@@ -60,6 +61,7 @@ export function setupRun(
 
   const schemaPath = join(runDir, "output-schema.json");
   writeSchemaFile(schemaPath);
+  const logPath = join(runDir, "debug.jsonl");
 
   const baseCommitPath = join(runDir, "base-commit");
   const hasStoredBaseCommit = existsSync(baseCommitPath);
@@ -76,6 +78,7 @@ export function setupRun(
     promptPath,
     notesPath,
     schemaPath,
+    logPath,
     baseCommit: resolvedBaseCommit,
     baseCommitPath,
   };
@@ -90,6 +93,7 @@ export function resumeRun(runId: string, cwd: string): RunInfo {
   const promptPath = join(runDir, "prompt.md");
   const notesPath = join(runDir, "notes.md");
   const schemaPath = join(runDir, "output-schema.json");
+  const logPath = join(runDir, "debug.jsonl");
   writeSchemaFile(schemaPath);
   const baseCommitPath = join(runDir, "base-commit");
   const baseCommit = existsSync(baseCommitPath)
@@ -102,6 +106,7 @@ export function resumeRun(runId: string, cwd: string): RunInfo {
     promptPath,
     notesPath,
     schemaPath,
+    logPath,
     baseCommit,
     baseCommitPath,
   };

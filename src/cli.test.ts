@@ -21,6 +21,7 @@ const stubRunInfo: RunInfo = {
   promptPath: "/repo/.fttm/runs/run-abc/PROMPT.md",
   notesPath: "/repo/.fttm/runs/run-abc/notes.md",
   schemaPath: "/repo/.fttm/runs/run-abc/schema.json",
+  logPath: "/repo/.fttm/runs/run-abc/debug.jsonl",
   baseCommit: "abc123",
   baseCommitPath: "/repo/.fttm/runs/run-abc/base-commit",
 };
@@ -29,6 +30,7 @@ interface CliMockOverrides {
   appendDebugLog?: ReturnType<typeof vi.fn>;
   createAgent?: ReturnType<typeof vi.fn>;
   env?: Record<string, string | undefined>;
+  initDebugLog?: ReturnType<typeof vi.fn>;
   orchestratorStart?: ReturnType<typeof vi.fn>;
   readStdinText?: ReturnType<typeof vi.fn>;
   rendererWaitUntilExit?: ReturnType<typeof vi.fn>;
@@ -58,6 +60,7 @@ async function runCliWithMocks(
   const createAgent =
     overrides.createAgent ?? vi.fn(() => ({ name: config.agent }));
   const appendDebugLog = overrides.appendDebugLog ?? vi.fn();
+  const initDebugLog = overrides.initDebugLog ?? vi.fn();
   const readStdinText =
     overrides.readStdinText ?? vi.fn(() => Promise.resolve(""));
   const startSleepPrevention =
@@ -91,7 +94,11 @@ async function runCliWithMocks(
 
   vi.resetModules();
   vi.doMock("./core/config.js", () => ({ loadConfig }));
-  vi.doMock("./core/debug-log.js", () => ({ appendDebugLog }));
+  vi.doMock("./core/debug-log.js", () => ({
+    appendDebugLog,
+    initDebugLog,
+    serializeError: vi.fn((error) => ({ value: String(error) })),
+  }));
   vi.doMock("./core/git.js", () => ({
     ensureCleanWorkingTree: vi.fn(),
     createBranch: vi.fn(),
@@ -165,6 +172,7 @@ async function runCliWithMocks(
 
   return {
     appendDebugLog,
+    initDebugLog,
     loadConfig,
     createAgent,
     orchestratorCtor,
@@ -210,7 +218,7 @@ describe("cli", () => {
   });
 
   it("uses config.agent when --agent is not passed", async () => {
-    const { loadConfig, createAgent } = await runCliWithMocks(["ship it"], {
+    const { loadConfig, createAgent, initDebugLog } = await runCliWithMocks(["ship it"], {
       agent: "codex",
       agentPathOverride: {},
       maxConsecutiveFailures: 3,
@@ -224,6 +232,7 @@ describe("cli", () => {
       undefined,
       undefined,
     );
+    expect(initDebugLog).toHaveBeenCalledWith(stubRunInfo.logPath);
   });
 
   it("uses the explicit --agent flag as an override", async () => {
@@ -560,7 +569,11 @@ describe("cli", () => {
 
     vi.resetModules();
     vi.doMock("./core/config.js", () => ({ loadConfig }));
-    vi.doMock("./core/debug-log.js", () => ({ appendDebugLog: vi.fn() }));
+    vi.doMock("./core/debug-log.js", () => ({
+      appendDebugLog: vi.fn(),
+      initDebugLog: vi.fn(),
+      serializeError: vi.fn((error) => ({ value: String(error) })),
+    }));
     vi.doMock("./core/git.js", () => ({
       ensureCleanWorkingTree: vi.fn(),
       createBranch: vi.fn(),

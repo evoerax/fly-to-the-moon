@@ -51,68 +51,25 @@ function sseResponse(chunks: string | string[]): Response {
   );
 }
 
-function finalMessageResponse(
-  summary: string,
-  usage: { input: number; output: number; read: number; write: number },
-  messageId = "msg-123",
-  structuredOnly = false,
-) {
-  return jsonResponse({
-    info: {
-      id: messageId,
-      sessionID: "session-123",
-      role: "assistant",
-      structured: {
-        success: true,
-        summary,
-        key_changes_made: [],
-        key_learnings: [],
-      },
-      tokens: {
-        input: usage.input,
-        output: usage.output,
-        cache: {
-          read: usage.read,
-          write: usage.write,
-        },
-      },
-    },
-    parts: structuredOnly
-      ? []
-      : [
-          {
-            id: "part-final",
-            type: "text",
-            text: JSON.stringify({
-              success: true,
-              summary,
-              key_changes_made: [],
-              key_learnings: [],
-            }),
-            metadata: {
-              openai: {
-                phase: "final_answer",
-              },
-            },
-          },
-        ],
-  });
+function promptAsyncResponse() {
+  return new Response(null, { status: 204 });
 }
 
 function finalAnswerEvents(
   summary: string,
   usage: { input: number; output: number; read: number; write: number },
   messageId = "msg-123",
+  sessionId = "session-123",
 ): string {
   return [
-    'data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"session-123","part":{"id":"part-final","type":"text","text":"","metadata":{"openai":{"phase":"final_answer"}}}}}}',
+    `data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"${sessionId}","part":{"id":"part-final","type":"text","text":"","metadata":{"openai":{"phase":"final_answer"}}}}}}`,
     "",
     `data: ${JSON.stringify({
       directory: "/repo",
       payload: {
         type: "message.part.delta",
         properties: {
-          sessionID: "session-123",
+          sessionID: sessionId,
           partID: "part-final",
           field: "text",
           delta: JSON.stringify({
@@ -128,9 +85,34 @@ function finalAnswerEvents(
     `data: ${JSON.stringify({
       directory: "/repo",
       payload: {
+        type: "message.updated",
+        properties: {
+          sessionID: sessionId,
+          info: {
+            id: messageId,
+            role: "assistant",
+            structured: {
+              success: true,
+              summary,
+              key_changes_made: [],
+              key_learnings: [],
+            },
+            tokens: {
+              input: usage.input,
+              output: usage.output,
+              cache: { read: usage.read, write: usage.write },
+            },
+          },
+        },
+      },
+    })}`,
+    "",
+    `data: ${JSON.stringify({
+      directory: "/repo",
+      payload: {
         type: "message.part.updated",
         properties: {
-          sessionID: "session-123",
+          sessionID: sessionId,
           part: {
             id: "finish-1",
             messageID: messageId,
@@ -145,7 +127,7 @@ function finalAnswerEvents(
       },
     })}`,
     "",
-    'data: {"directory":"/repo","payload":{"type":"session.idle","properties":{"sessionID":"session-123"}}}',
+    `data: {"directory":"/repo","payload":{"type":"session.idle","properties":{"sessionID":"${sessionId}"}}}`,
     "",
   ].join("\n");
 }
@@ -205,12 +187,7 @@ describe("OpenCodeAgent", () => {
         ),
       )
       .mockResolvedValueOnce(
-        finalMessageResponse("done", {
-          input: 1,
-          output: 1,
-          read: 0,
-          write: 0,
-        }),
+        promptAsyncResponse(),
       )
       .mockResolvedValueOnce(jsonResponse(true));
 
@@ -271,9 +248,7 @@ describe("OpenCodeAgent", () => {
       expect(readFileSync(logPath, "utf-8")).toContain("message.part.delta");
     });
 
-    resolveMessageResponse(
-      finalMessageResponse("done", { input: 10, output: 4, read: 3, write: 2 }),
-    );
+    resolveMessageResponse(promptAsyncResponse());
 
     const result = await runPromise;
     expect(result.output.summary).toBe("done");
@@ -292,21 +267,7 @@ describe("OpenCodeAgent", () => {
           'data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"session-123","part":{"id":"part-final","type":"text","text":"{\\"success\\":true,\\"summary\\":\\"done\\",\\"key_changes_made\\":[],\\"key_learnings\\":[]}","metadata":{"openai":{"phase":"final_answer"}}}}}}',
         ]),
       )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          info: {
-            id: "msg-123",
-            sessionID: "session-123",
-            role: "assistant",
-            tokens: {
-              input: 10,
-              output: 4,
-              cache: { read: 3, write: 2 },
-            },
-          },
-          parts: [],
-        }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     await expect(agent.run("test prompt", "/repo")).resolves.toEqual({
@@ -344,19 +305,7 @@ describe("OpenCodeAgent", () => {
           `${finalAnswerEvents("done", { input: 100, output: 20, read: 7, write: 3 })}`,
         ]),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse(
-          "done",
-          {
-            input: 100,
-            output: 20,
-            read: 7,
-            write: 3,
-          },
-          "msg-123",
-          true,
-        ),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     const onUsage = vi.fn();
@@ -394,7 +343,7 @@ describe("OpenCodeAgent", () => {
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       4,
-      "http://127.0.0.1:8765/session/session-123/message",
+      "http://127.0.0.1:8765/session/session-123/prompt_async",
       expect.objectContaining({ method: "POST" }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
@@ -490,12 +439,7 @@ describe("OpenCodeAgent", () => {
         ),
       )
       .mockResolvedValueOnce(
-        finalMessageResponse("done", {
-          input: 1,
-          output: 1,
-          read: 0,
-          write: 0,
-        }),
+        promptAsyncResponse(),
       )
       .mockResolvedValueOnce(jsonResponse(true));
 
@@ -533,12 +477,7 @@ describe("OpenCodeAgent", () => {
         ),
       )
       .mockResolvedValueOnce(
-        finalMessageResponse("done", {
-          input: 1,
-          output: 1,
-          read: 0,
-          write: 0,
-        }),
+        promptAsyncResponse(),
       )
       .mockResolvedValueOnce(jsonResponse(true));
 
@@ -565,9 +504,7 @@ describe("OpenCodeAgent", () => {
           finalAnswerEvents("one", { input: 1, output: 1, read: 0, write: 0 }),
         ),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse("one", { input: 1, output: 1, read: 0, write: 0 }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true))
       .mockResolvedValueOnce(jsonResponse({ id: "session-123" }))
       .mockResolvedValueOnce(
@@ -575,9 +512,7 @@ describe("OpenCodeAgent", () => {
           finalAnswerEvents("two", { input: 2, output: 2, read: 0, write: 0 }),
         ),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse("two", { input: 2, output: 2, read: 0, write: 0 }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     await agent.run("first", "/repo-one");
@@ -610,9 +545,7 @@ describe("OpenCodeAgent", () => {
           finalAnswerEvents("one", { input: 1, output: 1, read: 0, write: 0 }),
         ),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse("one", { input: 1, output: 1, read: 0, write: 0 }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true))
       .mockResolvedValueOnce(jsonResponse({ healthy: true, version: "1.3.13" }))
       .mockResolvedValueOnce(jsonResponse({ id: "session-456" }))
@@ -622,16 +555,11 @@ describe("OpenCodeAgent", () => {
             "two",
             { input: 2, output: 2, read: 0, write: 0 },
             "msg-456",
+            "session-456",
           ),
         ),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse(
-          "two",
-          { input: 2, output: 2, read: 0, write: 0 },
-          "msg-456",
-        ),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     await agent.run("first", "/repo-one");
@@ -658,22 +586,12 @@ describe("OpenCodeAgent", () => {
           'data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"session-123","part":{"id":"finish-1","messageID":"msg-1","type":"step-finish","tokens":{"input":10,"output":4,"cache":{"read":3,"write":2}}}}}}\n\n',
           'data: {"directory":"/repo","payload":{"type":"message.updated","properties":{"sessionID":"session-123","info":{"id":"msg-2","role":"assistant","tokens":{"input":0,"output":0,"cache":{"read":0,"write":0}}}}}}\n\n',
           'data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"session-123","part":{"id":"part-final","type":"text","text":"{\\"success\\":true,\\"summary\\":\\"done\\",\\"key_changes_made\\":[],\\"key_learnings\\":[]}","metadata":{"openai":{"phase":"final_answer"}}}}}}\n\n',
+          'data: {"directory":"/repo","payload":{"type":"message.updated","properties":{"sessionID":"session-123","info":{"id":"msg-2","role":"assistant","structured":{"success":true,"summary":"done","key_changes_made":[],"key_learnings":[]},"tokens":{"input":20,"output":6,"cache":{"read":5,"write":1}}}}}}\n\n',
           'data: {"directory":"/repo","payload":{"type":"message.part.updated","properties":{"sessionID":"session-123","part":{"id":"finish-2","messageID":"msg-2","type":"step-finish","tokens":{"input":20,"output":6,"cache":{"read":5,"write":1}}}}}}\n\n',
           'data: {"directory":"/repo","payload":{"type":"session.idle","properties":{"sessionID":"session-123"}}}\n\n',
         ]),
       )
-      .mockResolvedValueOnce(
-        finalMessageResponse(
-          "done",
-          {
-            input: 20,
-            output: 6,
-            read: 5,
-            write: 1,
-          },
-          "msg-2",
-        ),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     const onUsage = vi.fn();
@@ -713,16 +631,7 @@ describe("OpenCodeAgent", () => {
           'data: {"directory":"/repo","payload":{"type":"session.idle","properties":{"sessionID":"session-123"}}}\n\n',
         ]),
       )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          info: {
-            id: "msg-123",
-            sessionID: "session-123",
-            role: "assistant",
-          },
-          parts: [{ type: "text", text: "not json" }],
-        }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     await expect(agent.run("test", "/repo")).rejects.toThrow(
@@ -743,14 +652,7 @@ describe("OpenCodeAgent", () => {
           'data: {"directory":"/repo","payload":{"type":"session.idle","properties":{"sessionID":"session-123"}}}\n\n',
         ]),
       )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          info: {
-            tokens: { input: 1, output: 1, cache: { read: 0, write: 0 } },
-          },
-          parts: [{ type: "step-start" }],
-        }),
-      )
+      .mockResolvedValueOnce(promptAsyncResponse())
       .mockResolvedValueOnce(jsonResponse(true));
 
     await expect(agent.run("test", "/repo")).rejects.toThrow(
@@ -780,12 +682,7 @@ describe("OpenCodeAgent", () => {
         ),
       )
       .mockResolvedValueOnce(
-        finalMessageResponse("done", {
-          input: 1,
-          output: 1,
-          read: 0,
-          write: 0,
-        }),
+        promptAsyncResponse(),
       )
       .mockResolvedValueOnce(jsonResponse(true));
 

@@ -140,6 +140,7 @@ describe("setupRun", () => {
       promptPath: join(runDir, "prompt.md"),
       notesPath: join(runDir, "notes.md"),
       schemaPath: join(runDir, "output-schema.json"),
+      logPath: join(runDir, "debug.jsonl"),
       baseCommit: "abc123",
       baseCommitPath: join(runDir, "base-commit"),
     });

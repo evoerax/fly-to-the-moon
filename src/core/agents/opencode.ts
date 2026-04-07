@@ -13,7 +13,7 @@ import {
   type AgentRunOptions,
   type TokenUsage,
 } from "./types.js";
-import { appendDebugLog } from "../debug-log.js";
+import { appendDebugLog, serializeError } from "../debug-log.js";
 import { shutdownChildProcess } from "./managed-process.js";
 
 interface OpenCodeMessagePart {
@@ -73,6 +73,7 @@ interface OpenCodeStreamEvent {
       info?: {
         id?: string;
         role?: string;
+        structured?: AgentOutput;
         tokens?: OpenCodeTokens;
       };
     };
@@ -303,6 +304,14 @@ export class OpenCodeAgent implements Agent {
       if (runController.signal.aborted || isAbortError(error)) {
         throw createAbortError();
       }
+      appendDebugLog("opencode:run:error", {
+        sessionId,
+        cwd,
+        error: serializeError(error),
+        serverClosed: this.server?.closed ?? true,
+        serverStderr: this.server?.stderr.slice(-2048),
+        serverStdout: this.server?.stdout.slice(-2048),
+      });
       throw error;
     } finally {
       signal?.removeEventListener("abort", onAbort);
@@ -501,31 +510,27 @@ export class OpenCodeAgent implements Agent {
     let messageRequestError: unknown = null;
     const messageRequest = (async (): Promise<MessageRequestResult> => {
       try {
-        const body = await this.requestText(
-          server,
-          `/session/${sessionId}/message`,
-          {
-            method: "POST",
-            body: {
-              role: "user",
-              parts: [{ type: "text", text: prompt }],
-              ...(this.model
-                ? {
-                    model: (() => {
-                      const parts = this.model.split("/");
-                      if (parts.length === 2) {
-                        return { providerID: parts[0], modelID: parts[1] };
-                      }
-                      return { providerID: "opencode", modelID: this.model };
-                    })(),
-                  }
-                : {}),
-              format: STRUCTURED_OUTPUT_FORMAT,
-            },
-            signal,
+        await this.request(server, `/session/${sessionId}/prompt_async`, {
+          method: "POST",
+          body: {
+            role: "user",
+            parts: [{ type: "text", text: prompt }],
+            ...(this.model
+              ? {
+                  model: (() => {
+                    const parts = this.model.split("/");
+                    if (parts.length === 2) {
+                      return { providerID: parts[0], modelID: parts[1] };
+                    }
+                    return { providerID: "opencode", modelID: this.model };
+                  })(),
+                }
+              : {}),
+            format: STRUCTURED_OUTPUT_FORMAT,
           },
-        );
-        return { ok: true, body };
+          signal,
+        });
+        return { ok: true, body: "" };
       } catch (error) {
         messageRequestError = error;
         streamAbortController.abort();
@@ -544,6 +549,7 @@ export class OpenCodeAgent implements Agent {
     let lastText: string | null = null;
     let lastFinalAnswerText: string | null = null;
     let lastUsageSignature = "0:0:0:0";
+    let structuredOutputFromSSE: AgentOutput | null = null;
 
     const updateUsage = (
       messageId: string | undefined,
@@ -630,6 +636,9 @@ export class OpenCodeAgent implements Agent {
       if (payload?.type === "message.updated") {
         if (properties.info?.role === "assistant") {
           updateUsage(properties.info.id, properties.info.tokens);
+        }
+        if (properties.info?.structured) {
+          structuredOutputFromSSE = properties.info.structured;
         }
         return false;
       }
@@ -744,31 +753,19 @@ export class OpenCodeAgent implements Agent {
     }
 
     const body = messageResult.body;
-    let response: OpenCodeMessageResponse;
-    try {
-      response = JSON.parse(body) as OpenCodeMessageResponse;
-    } catch (error) {
-      throw new Error(
-        `Failed to parse opencode response: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-
-    if (response.info?.role === "assistant") {
-      updateUsage(response.info.id, response.info.tokens);
-    }
-
-    for (const part of response.parts ?? []) {
-      if (part.type !== "text" || typeof part.text !== "string") continue;
-      if (!part.text.trim()) continue;
-      lastText = part.text;
-      if (part.metadata?.openai?.phase === "final_answer") {
-        lastFinalAnswerText = part.text;
+    if (body) {
+      try {
+        JSON.parse(body) as OpenCodeMessageResponse;
+      } catch (error) {
+        throw new Error(
+          `Failed to parse opencode response: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
     }
 
-    if (response.info?.structured) {
+    if (structuredOutputFromSSE) {
       return {
-        output: response.info.structured,
+        output: structuredOutputFromSSE,
         usage,
       };
     }
@@ -879,13 +876,25 @@ export class OpenCodeAgent implements Agent {
     }
 
     const signal = withTimeoutSignal(options.signal, options.timeoutMs);
-    const response = await this.fetchFn(`${server.baseUrl}${path}`, {
-      method: options.method,
-      headers,
-      body:
-        options.body === undefined ? undefined : JSON.stringify(options.body),
-      signal,
-    });
+    let response: Response;
+    try {
+      response = await this.fetchFn(`${server.baseUrl}${path}`, {
+        method: options.method,
+        headers,
+        body:
+          options.body === undefined ? undefined : JSON.stringify(options.body),
+        signal,
+      });
+    } catch (error) {
+      appendDebugLog("opencode:request:error", {
+        method: options.method,
+        path,
+        timeoutMs: options.timeoutMs,
+        error: serializeError(error),
+        serverClosed: server.closed,
+      });
+      throw error;
+    }
 
     if (!response.ok) {
       const body = await response.text();

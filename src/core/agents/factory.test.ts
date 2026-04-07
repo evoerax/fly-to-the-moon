@@ -49,6 +49,7 @@ const stubRunInfo: RunInfo = {
   promptPath: "/repo/.fttm/runs/test-run/PROMPT.md",
   notesPath: "/repo/.fttm/runs/test-run/notes.md",
   schemaPath: "/repo/.fttm/runs/test-run/schema.json",
+  logPath: "/repo/.fttm/runs/test-run/debug.jsonl",
   baseCommit: "abc123",
   baseCommitPath: "/repo/.fttm/runs/test-run/base-commit",
 };
