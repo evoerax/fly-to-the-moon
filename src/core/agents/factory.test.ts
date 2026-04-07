@@ -56,7 +56,10 @@ const stubRunInfo: RunInfo = {
 describe("createAgent", () => {
   it("creates a ClaudeAgent when name is 'claude'", () => {
     const agent = createAgent("claude", stubRunInfo);
-    expect(ClaudeAgent).toHaveBeenCalledWith(undefined);
+    expect(ClaudeAgent).toHaveBeenCalledWith({
+      bin: undefined,
+      model: undefined,
+    });
     expect(agent.name).toBe("claude");
   });
 

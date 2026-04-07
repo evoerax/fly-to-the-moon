@@ -133,6 +133,7 @@ describe("startSleepPrevention", () => {
         platform: "linux",
         processArgv1: "/dist/cli.mjs",
         processExecPath: "/node",
+        detach: true,
       },
     );
 
@@ -141,6 +142,8 @@ describe("startSleepPrevention", () => {
       expect.arrayContaining([
         "--what=idle:sleep",
         "--mode=block",
+        "--who=fttm",
+        "--why=Prevent sleep while fttm is running",
         "/node",
         "/dist/cli.mjs",
         "ship it",

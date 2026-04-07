@@ -112,7 +112,12 @@ describe("gnhf e2e", () => {
   afterEach(() => {
     for (const dir of tempDirs.splice(0)) {
       try {
-        rmSync(dir, { recursive: true, force: true, maxRetries: 3, retryDelay: 200 });
+        rmSync(dir, {
+          recursive: true,
+          force: true,
+          maxRetries: 3,
+          retryDelay: 200,
+        });
       } catch {
         // Windows: child processes may still hold file locks briefly after exit
       }
@@ -142,7 +147,7 @@ describe("gnhf e2e", () => {
 
     expect(result.code).toBe(0);
     expect(git(["rev-list", "--count", "HEAD"], cwd)).toBe("2");
-    expect(git(["log", "-1", "--format=%s"], cwd)).toContain("gnhf #1:");
+    expect(git(["log", "-1", "--format=%s"], cwd)).toContain("fttm #1:");
 
     const startEvent = await waitForLogEvent(mockLogPath, "server:start");
     expect(startEvent.command).toBe("serve");
@@ -210,58 +215,64 @@ describe("gnhf e2e", () => {
 
   // Windows has no POSIX signals; child.kill("SIGINT") force-terminates the
   // process tree without triggering the graceful shutdown path this test covers.
-  it.skipIf(process.platform === "win32")("shuts down the agent server when gnhf receives SIGINT", async () => {
-    const cwd = createRepo();
-    tempDirs.push(cwd);
-    const logDir = mkdtempSync(join(tmpdir(), "gnhf-e2e-logs-"));
-    tempDirs.push(logDir);
-    const mockLogPath = join(logDir, "mock-opencode.jsonl");
-    const debugLogPath = join(logDir, "gnhf-debug.jsonl");
+  it.skipIf(process.platform === "win32")(
+    "shuts down the agent server when gnhf receives SIGINT",
+    async () => {
+      const cwd = createRepo();
+      tempDirs.push(cwd);
+      const logDir = mkdtempSync(join(tmpdir(), "gnhf-e2e-logs-"));
+      tempDirs.push(logDir);
+      const mockLogPath = join(logDir, "mock-opencode.jsonl");
+      const debugLogPath = join(logDir, "gnhf-debug.jsonl");
 
-    const child = spawn(
-      process.execPath,
-      [distCliPath, "slow cleanup", "--agent", "opencode"],
-      {
-        cwd,
-        env: {
-          ...process.env,
-          PATH: `${fixtureBinDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`,
-          GNHF_MOCK_OPENCODE_LOG_PATH: mockLogPath,
-          GNHF_DEBUG_LOG_PATH: debugLogPath,
+      const child = spawn(
+        process.execPath,
+        [distCliPath, "slow cleanup", "--agent", "opencode"],
+        {
+          cwd,
+          env: {
+            ...process.env,
+            PATH: `${fixtureBinDir}${process.platform === "win32" ? ";" : ":"}${process.env.PATH ?? ""}`,
+            GNHF_MOCK_OPENCODE_LOG_PATH: mockLogPath,
+            GNHF_DEBUG_LOG_PATH: debugLogPath,
+          },
+          stdio: ["pipe", "pipe", "pipe"],
         },
-        stdio: ["pipe", "pipe", "pipe"],
-      },
-    );
-    child.stdin.end();
+      );
+      child.stdin.end();
 
-    const exitPromise = new Promise<RunResult>((resolveResult, reject) => {
-      let stdout = "";
-      let stderr = "";
-      child.stdout.on("data", (chunk) => {
-        stdout += chunk.toString();
+      const exitPromise = new Promise<RunResult>((resolveResult, reject) => {
+        let stdout = "";
+        let stderr = "";
+        child.stdout.on("data", (chunk) => {
+          stdout += chunk.toString();
+        });
+        child.stderr.on("data", (chunk) => {
+          stderr += chunk.toString();
+        });
+        child.on("error", reject);
+        child.on("close", (code, signal) => {
+          resolveResult({ code, signal, stdout, stderr });
+        });
       });
-      child.stderr.on("data", (chunk) => {
-        stderr += chunk.toString();
-      });
-      child.on("error", reject);
-      child.on("close", (code, signal) => {
-        resolveResult({ code, signal, stdout, stderr });
-      });
-    });
 
-    const startEvent = await waitForLogEvent(mockLogPath, "server:start");
-    await waitForLogEvent(mockLogPath, "message:start");
-    child.kill("SIGINT");
+      const startEvent = await waitForLogEvent(mockLogPath, "server:start");
+      await waitForLogEvent(mockLogPath, "message:start");
+      child.kill("SIGINT");
 
-    const result = await exitPromise;
-    expect(result.code).toBe(130);
-    expect(isProcessAlive(Number(startEvent.pid))).toBe(false);
+      const result = await exitPromise;
+      expect(result.code).toBe(130);
+      expect(isProcessAlive(Number(startEvent.pid))).toBe(false);
 
-    const mockEvents = readJsonLines(mockLogPath).map((entry) => entry.event);
-    expect(mockEvents).toContain("session:abort");
-    expect(mockEvents).toContain("session:delete");
+      const mockEvents = readJsonLines(mockLogPath).map((entry) => entry.event);
+      expect(mockEvents).toContain("session:abort");
+      expect(mockEvents).toContain("session:delete");
 
-    const debugEvents = readJsonLines(debugLogPath).map((entry) => entry.event);
-    expect(debugEvents).toContain("signal:SIGINT");
-  }, 30_000);
+      const debugEvents = readJsonLines(debugLogPath).map(
+        (entry) => entry.event,
+      );
+      expect(debugEvents).toContain("signal:SIGINT");
+    },
+    30_000,
+  );
 });

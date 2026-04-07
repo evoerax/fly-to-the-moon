@@ -30,11 +30,11 @@ function writeSchemaFile(schemaPath: string): void {
 }
 
 function ensureRunMetadataIgnored(cwd: string): void {
-  const ftmDir = join(cwd, ".fttm");
-  const gitignorePath = join(ftmDir, ".gitignore");
-  if (existsSync(gitignorePath)) return;
-  mkdirSync(ftmDir, { recursive: true });
-  writeFileSync(gitignorePath, "*\n", "utf-8");
+  const excludePath = join(cwd, ".git", "info", "exclude");
+  if (existsSync(excludePath)) return;
+  const gitInfoDir = join(cwd, ".git", "info");
+  mkdirSync(gitInfoDir, { recursive: true });
+  writeFileSync(excludePath, ".fttm/runs/\n", "utf-8");
 }
 
 export function setupRun(

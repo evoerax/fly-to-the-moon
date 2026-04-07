@@ -218,7 +218,12 @@ describe("cli", () => {
     });
 
     expect(loadConfig).toHaveBeenCalledWith({});
-    expect(createAgent).toHaveBeenCalledWith("codex", stubRunInfo, undefined);
+    expect(createAgent).toHaveBeenCalledWith(
+      "codex",
+      stubRunInfo,
+      undefined,
+      undefined,
+    );
   });
 
   it("uses the explicit --agent flag as an override", async () => {
@@ -233,7 +238,12 @@ describe("cli", () => {
     );
 
     expect(loadConfig).toHaveBeenCalledWith({ agent: "claude" });
-    expect(createAgent).toHaveBeenCalledWith("claude", stubRunInfo, undefined);
+    expect(createAgent).toHaveBeenCalledWith(
+      "claude",
+      stubRunInfo,
+      undefined,
+      undefined,
+    );
   });
 
   it("accepts rovodev as an explicit --agent override", async () => {
@@ -248,7 +258,12 @@ describe("cli", () => {
     );
 
     expect(loadConfig).toHaveBeenCalledWith({ agent: "rovodev" });
-    expect(createAgent).toHaveBeenCalledWith("rovodev", stubRunInfo, undefined);
+    expect(createAgent).toHaveBeenCalledWith(
+      "rovodev",
+      stubRunInfo,
+      undefined,
+      undefined,
+    );
   });
 
   it("accepts opencode as an explicit --agent override", async () => {
@@ -266,6 +281,7 @@ describe("cli", () => {
     expect(createAgent).toHaveBeenCalledWith(
       "opencode",
       stubRunInfo,
+      undefined,
       undefined,
     );
   });

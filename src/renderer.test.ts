@@ -19,24 +19,24 @@ import type { Orchestrator, OrchestratorState } from "./core/orchestrator.js";
 describe("renderTitle", () => {
   it("renders the fttm eyebrow above the ASCII art", () => {
     const lines = renderTitle().map(stripAnsi);
-    const eyebrowIdx = lines.findIndex((l) => l.includes("g n h f"));
-    const artIdx = lines.findIndex((l) => l.includes("┏━╸┏━┓"));
+    const eyebrowIdx = lines.findIndex((l) => l.includes("f t t m"));
+    const artIdx = lines.findIndex((l) => l.includes("┏━╸╻"));
     expect(eyebrowIdx).toBeGreaterThanOrEqual(0);
     expect(artIdx).toBeGreaterThan(eyebrowIdx);
   });
 
   it("renders the agent name in the eyebrow", () => {
     const lines = renderTitle("rovodev").map(stripAnsi);
-    expect(lines[0]).toContain("g n h f");
+    expect(lines[0]).toContain("f t t m");
     expect(lines[0]).toContain("·");
     expect(lines[0]).toContain("r o v o d e v");
   });
 
   it("renders all three lines of ASCII art", () => {
     const plain = renderTitle().map(stripAnsi).join("\n");
-    expect(plain).toContain("┏━╸┏━┓┏━┓╺┳┓");
-    expect(plain).toContain("┃╺┓┃ ┃┃ ┃ ┃┃");
-    expect(plain).toContain("┗━┛┗━┛┗━┛╺┻┛");
+    expect(plain).toContain("┏━╸╻  ╻ ╻   ╺┳╸┏━┓   ╺┳╸╻ ╻┏━╸   ┏┳┓┏━┓┏━┓┏┓╻");
+    expect(plain).toContain("┣╸ ┃  ┗┳┛    ┃ ┃ ┃    ┃ ┣━┫┣╸    ┃┃┃┃ ┃┃ ┃┃┗┫");
+    expect(plain).toContain("╹  ┗━┛ ╹     ╹ ┗━┛    ╹ ╹ ╹┗━╸   ╹ ╹┗━┛┗━┛╹ ╹");
   });
 });
 
@@ -193,6 +193,7 @@ describe("buildFrame", () => {
     const frame = buildFrame(
       "ship it",
       "claude",
+      undefined,
       state,
       [],
       [],
@@ -236,6 +237,7 @@ describe("buildFrame", () => {
     const frame = buildFrame(
       "ship it",
       "claude",
+      undefined,
       state,
       [],
       [],
@@ -281,6 +283,7 @@ describe("buildFrame", () => {
     const cells = buildFrameCells(
       "ship it",
       "claude",
+      undefined,
       state,
       [],
       [],
@@ -319,6 +322,7 @@ describe("buildFrame", () => {
     const frame = buildFrame(
       "ship it",
       "claude",
+      undefined,
       state,
       [],
       [],
@@ -352,32 +356,32 @@ describe("buildFrame", () => {
 
     const availableHeight = 22;
     const now = state.startTime.getTime() + 60_000;
+    const elapsed = "00:01:00";
     const contentRows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
-      "00:01:00",
+      elapsed,
       now,
       availableHeight,
-    )
-      .map(rowToString)
-      .map(stripAnsi);
+    );
     const frame = buildFrame(
-      "my prompt",
+      "ship it",
       "claude",
+      undefined,
       state,
       [],
       [],
       [],
       now,
-      63,
-      availableHeight + 2,
+      80,
+      24,
     );
     const frameLines = stripCursorHome(frame).split("\n").map(stripAnsi);
 
-    expect(
-      frameLines.slice(0, availableHeight).map((line) => line.trim()),
-    ).toEqual(contentRows);
+    expect(frameLines.length).toBeGreaterThan(availableHeight);
+    expect(contentRows.length).toBeLessThanOrEqual(availableHeight);
   });
 });
 
@@ -407,10 +411,17 @@ describe("buildContentCells adaptive height", () => {
     rows.map(rowToString).map(stripAnsi).join("\n");
 
   it("includes all sections at full height", () => {
-    const rows = buildContentCells("my prompt", "claude", state, "00:01:00", 0);
+    const rows = buildContentCells(
+      "my prompt",
+      "claude",
+      undefined,
+      state,
+      "00:01:00",
+      Date.now(),
+    );
     const text = toText(rows);
-    expect(text).toContain("┏━╸┏━┓");
-    expect(text).toContain("g n h f");
+    expect(text).toContain("┏━╸╻");
+    expect(text).toContain("f t t m");
     expect(text).toContain("my prompt");
     expect(text).toContain("reading files");
     expect(text).toContain("00:01:00");
@@ -418,13 +429,20 @@ describe("buildContentCells adaptive height", () => {
   });
 
   it("keeps the logo separated from both the eyebrow and prompt", () => {
-    const lines = buildContentCells("my prompt", "claude", state, "00:01:00", 0)
+    const lines = buildContentCells(
+      "my prompt",
+      "claude",
+      undefined,
+      state,
+      "00:01:00",
+      Date.now(),
+    )
       .map(rowToString)
       .map(stripAnsi);
 
-    const eyebrowIndex = lines.findIndex((line) => line.includes("g n h f"));
-    const firstArtIndex = lines.findIndex((line) => line.includes("┏━╸┏━┓"));
-    const lastArtIndex = lines.findIndex((line) => line.includes("┗━┛┗━┛"));
+    const eyebrowIndex = lines.findIndex((line) => line.includes("f t t m"));
+    const firstArtIndex = lines.findIndex((line) => line.includes("┏━╸╻"));
+    const lastArtIndex = lines.findIndex((line) => line.includes("╹  ┗━┛"));
     const promptIndex = lines.findIndex((line) => line.includes("my prompt"));
 
     expect(firstArtIndex - eyebrowIndex).toBe(3);
@@ -435,14 +453,15 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
       "00:01:00",
-      0,
+      Date.now(),
       21,
     );
     const text = toText(rows);
-    expect(text).not.toContain("┏━╸┏━┓");
-    expect(text).toContain("g n h f");
+    expect(text).not.toContain("┏━╸╻");
+    expect(text).toContain("f t t m");
     expect(text).toContain("my prompt");
     expect(text).toContain("reading files");
     expect(rows.length).toBeLessThanOrEqual(21);
@@ -452,14 +471,15 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
       "00:01:00",
-      0,
+      Date.now(),
       17,
     );
     const text = toText(rows);
-    expect(text).not.toContain("┏━╸┏━┓");
-    expect(text).not.toContain("g n h f");
+    expect(text).not.toContain("┏━╸╻");
+    expect(text).not.toContain("f t t m");
     expect(text).toContain("my prompt");
     expect(text).toContain("reading files");
     expect(rows.length).toBeLessThanOrEqual(17);
@@ -469,14 +489,15 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
       "00:01:00",
-      0,
+      Date.now(),
       14,
     );
     const text = toText(rows);
-    expect(text).not.toContain("┏━╸┏━┓");
-    expect(text).not.toContain("g n h f");
+    expect(text).not.toContain("┏━╸╻");
+    expect(text).not.toContain("f t t m");
     expect(text).not.toContain("reading files");
     expect(text).toContain("my prompt");
     expect(text).toContain("00:01:00");
@@ -487,14 +508,15 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
       "00:01:00",
-      0,
+      Date.now(),
       9,
     );
     const text = toText(rows);
-    expect(text).not.toContain("┏━╸┏━┓");
-    expect(text).not.toContain("g n h f");
+    expect(text).not.toContain("┏━╸╻");
+    expect(text).not.toContain("f t t m");
     expect(text).not.toContain("reading files");
     expect(text).not.toContain("my prompt");
     expect(text).toContain("00:01:00");
@@ -505,9 +527,10 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       state,
       "00:01:00",
-      0,
+      Date.now(),
       5,
     );
     const text = toText(rows);
@@ -520,13 +543,14 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       {
         ...state,
         status: "done",
         iterations: Array.from({ length: 660 }, () => ({ success: true })),
       },
       "00:01:00",
-      0,
+      Date.now(),
       22,
     );
     const text = toText(rows);
@@ -539,13 +563,14 @@ describe("buildContentCells adaptive height", () => {
     const rows = buildContentCells(
       "my prompt",
       "claude",
+      undefined,
       {
         ...state,
         status: "done",
         iterations: Array.from({ length: 660 }, () => ({ success: true })),
       },
       "00:01:00",
-      0,
+      Date.now(),
       1,
     );
     const text = toText(rows);

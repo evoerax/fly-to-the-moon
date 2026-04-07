@@ -14,7 +14,7 @@ export function createAgent(
 ): Agent {
   switch (name) {
     case "claude":
-      return new ClaudeAgent(pathOverride);
+      return new ClaudeAgent({ bin: pathOverride, model });
     case "codex":
       return new CodexAgent(runInfo.schemaPath, pathOverride);
     case "opencode":

@@ -45,6 +45,7 @@ type ClaudeEvent = ClaudeAssistantEvent | ClaudeResultEvent | { type: string };
 interface ClaudeAgentDeps {
   bin?: string;
   platform?: NodeJS.Platform;
+  model?: string;
 }
 
 function shouldUseWindowsShell(
@@ -101,11 +102,13 @@ export class ClaudeAgent implements Agent {
 
   private bin: string;
   private platform: NodeJS.Platform;
+  private model?: string;
 
   constructor(binOrDeps: string | ClaudeAgentDeps = {}) {
     const deps = typeof binOrDeps === "string" ? { bin: binOrDeps } : binOrDeps;
     this.bin = deps.bin ?? "claude";
     this.platform = deps.platform ?? process.platform;
+    this.model = deps.model;
   }
 
   run(
@@ -118,25 +121,26 @@ export class ClaudeAgent implements Agent {
     return new Promise((resolve, reject) => {
       const logStream = logPath ? createWriteStream(logPath) : null;
 
-      const child = spawn(
-        this.bin,
-        [
-          "-p",
-          prompt,
-          "--verbose",
-          "--output-format",
-          "stream-json",
-          "--json-schema",
-          JSON.stringify(AGENT_OUTPUT_SCHEMA),
-          "--dangerously-skip-permissions",
-        ],
-        {
-          cwd,
-          shell: shouldUseWindowsShell(this.bin, this.platform),
-          stdio: ["ignore", "pipe", "pipe"],
-          env: process.env,
-        },
-      );
+      const args = [
+        "-p",
+        prompt,
+        "--verbose",
+        "--output-format",
+        "stream-json",
+        "--json-schema",
+        JSON.stringify(AGENT_OUTPUT_SCHEMA),
+        "--dangerously-skip-permissions",
+      ];
+      if (this.model) {
+        args.push("--model", this.model);
+      }
+
+      const child = spawn(this.bin, args, {
+        cwd,
+        shell: shouldUseWindowsShell(this.bin, this.platform),
+        stdio: ["ignore", "pipe", "pipe"],
+        env: process.env,
+      });
 
       if (
         setupAbortHandler(signal, child, reject, () =>
