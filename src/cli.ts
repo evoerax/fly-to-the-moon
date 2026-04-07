@@ -192,6 +192,11 @@ program
     'Prevent system sleep during the run ("on" or "off")',
     parseOnOffBoolean,
   )
+  .option(
+    "--commit",
+    "Commit all iterations including failed ones (default: only commit successful iterations)",
+    false,
+  )
   .option("--mock", "", false)
   .action(
     async (
@@ -202,6 +207,7 @@ program
         maxIterations?: number;
         maxTokens?: number;
         preventSleep?: boolean;
+        commit: boolean;
         detach: boolean;
         mock: boolean;
       },
@@ -374,6 +380,7 @@ program
         {
           maxIterations: options.maxIterations,
           maxTokens: options.maxTokens,
+          commitAll: options.commit,
         },
       );
       let shutdownSignal: NodeJS.Signals | null = null;

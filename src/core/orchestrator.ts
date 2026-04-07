@@ -43,6 +43,7 @@ export interface OrchestratorEvents {
 export interface RunLimits {
   maxIterations?: number;
   maxTokens?: number;
+  commitAll?: boolean;
 }
 
 const STOP_CLOSE_AGENT_GRACE_MS = 250;
@@ -353,7 +354,18 @@ export class Orchestrator extends EventEmitter<OrchestratorEvents> {
       [],
       learnings,
     );
-    resetHard(this.cwd);
+    if (this.limits.commitAll) {
+      commitAll(
+        `fttm #${this.state.currentIteration}: [FAILED] ${recordSummary}`,
+        this.cwd,
+      );
+      this.state.commitCount = getBranchCommitCount(
+        this.runInfo.baseCommit,
+        this.cwd,
+      );
+    } else {
+      resetHard(this.cwd);
+    }
     this.state.failCount++;
     this.state.consecutiveFailures++;
     return {
