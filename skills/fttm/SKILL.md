@@ -15,18 +15,27 @@ fttm is an autonomous coding agent orchestrator — each iteration makes one sma
 
 Collect all requirements in up to 3 rounds of questions, then generate and run the command.
 
-### Round 1 — Core Requirements
+### Round 1 — Iteration Plan
+
+Tell the user: **"I will create an iteration plan at `.fttm/plans/plan-YYYYMMDD.md`."** This plan guides the agent through each iteration step.
+
+Then ask:
+
+**How would you like to handle the plan?** One message:
+
+1. **I create the plan** — Based on your objective, I draft a plan for you to review before running
+2. **You provide your own** — Share your own plan document or paste it in
+3. **Just describe direction** — Give me a rough direction, I'll generate a basic plan
+
+After Round 1, a plan file should exist at `.fttm/plans/plan-YYYYMMDD.md` before proceeding.
+
+### Round 2 — Agent & Parameters
 
 Ask these together in one message:
 
 1. **Objective** — What is the coding task/goal? (required)
 2. **Agent** — Which agent? Options: `claude` (default), `codex`, `rovodev`, `opencode`
 3. **Model** — Ask which model to use (e.g., `minimax-cn-coding-plan/MiniMax-M2.7`)
-
-### Round 2 — Limits & Mode (if relevant)
-
-Based on Round 1 answers:
-
 4. **Max iterations** — Any iteration cap? (default: unlimited)
 5. **Max tokens** — Any token cap? (default: unlimited)
 6. **Detach mode** — Run in background with `--detach`? (default: foreground)
@@ -38,7 +47,7 @@ Based on Round 1 answers:
 Generate the full command and show it:
 
 ```
-fttm "<objective>" \
+cat .fttm/plans/plan-YYYYMMDD.md | fttm "<objective>" \
   --agent <agent> \
   [--model <model>] \
   [--max-iterations <n>] \
@@ -50,12 +59,14 @@ fttm "<objective>" \
 
 Say: "Here's your fttm command:" followed by the command. Do NOT ask for confirmation — just present it.
 
+**Note:** If the plan is piped via `cat | fttm`, fttm will read it from stdin. Alternatively, the agent can read `.fttm/plans/plan-YYYYMMDD.md` directly — the plan is placed under `.fttm/` so fttm runs have access to it.
+
 ## Quick Reference
 
 | Flag               | Purpose                                      | Default                |
 | ------------------ | -------------------------------------------- | ---------------------- |
 | `--agent`          | `claude`, `codex`, `rovodev`, or `opencode`  | config file (`claude`) |
-| `--model`          | Model for opencode                           | agent default          |
+| `--model`          | Model to use                                 | agent default          |
 | `--max-iterations` | Stop after N iterations                      | unlimited              |
 | `--max-tokens`     | Stop after N total tokens                    | unlimited              |
 | `--detach`         | Background daemon mode                       | foreground             |
@@ -68,18 +79,17 @@ If the current git branch is already a `fttm/` branch, fttm will offer to resume
 
 ## Examples
 
-**Minimal run:**
+**Minimal run (no plan):**
 
 - Objective: "reduce API latency by 50%"
 - Agent: (just use default claude)
   → `fttm "reduce API latency by 50%"`
 
-**Full featured:**
+**Full featured with plan:**
 
 - Objective: "migrate user auth to JWT"
 - Agent: opencode
 - Model: minimax-cn-coding-plan/MiniMax-M2.7
 - Max iterations: 20
-- Detach: yes
-- Commit failed: yes
-  → `fttm "migrate user auth to JWT" --agent opencode --model minimax-cn-coding-plan/MiniMax-M2.7 --max-iterations 20 --detach --commit`
+- Plan created at `.fttm/plans/plan-20260408.md`
+  → `cat .fttm/plans/plan-20260408.md | fttm "migrate user auth to JWT" --agent opencode --model minimax-cn-coding-plan/MiniMax-M2.7 --max-iterations 20 --detach --commit`
