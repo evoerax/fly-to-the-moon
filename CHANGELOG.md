@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.12](https://github.com/evoerax/fly-to-the-moon/compare/gnhf-v0.1.11...gnhf-v0.1.12) (2026-04-09)
+
+
+### Features
+
+* add --commit flag to commit failed iterations ([1abca5d](https://github.com/evoerax/fly-to-the-moon/commit/1abca5dbebf4881e45d459f3181de2ebf84af958))
+* add opencode async prompt support and debug logging (codex) ([f771352](https://github.com/evoerax/fly-to-the-moon/commit/f77135208720f89b4cb6291c467b951fd6d21d12))
+
+
+### Bug Fixes
+
+* bin field maps to 'fttm' command instead of 'fly-to-moon' ([29b3b18](https://github.com/evoerax/fly-to-the-moon/commit/29b3b18805939fee45c9fc4c9cb251e545f1966b))
+* update --model description to reflect it works for all agents ([2ed1656](https://github.com/evoerax/fly-to-the-moon/commit/2ed165687ed5473ace11775b40138cb7300f72fe))
+
 ## 0.1.21 (2026-04-08)
 
 ### Features
