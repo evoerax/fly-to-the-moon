@@ -29,6 +29,7 @@ export interface OrchestratorState {
   failCount: number;
   consecutiveFailures: number;
   startTime: Date;
+  endTime: Date | null;
   waitingUntil: Date | null;
   lastMessage: string | null;
 }
@@ -80,6 +81,7 @@ export class Orchestrator extends EventEmitter<OrchestratorEvents> {
     failCount: 0,
     consecutiveFailures: 0,
     startTime: new Date(),
+    endTime: null,
     waitingUntil: null,
     lastMessage: null,
   };
@@ -152,6 +154,7 @@ export class Orchestrator extends EventEmitter<OrchestratorEvents> {
       }
       resetHard(this.cwd);
       this.state.status = "stopped";
+      this.state.endTime = new Date();
       this.emit("state", this.getState());
       this.emit("stopped");
     })();
@@ -481,6 +484,7 @@ export class Orchestrator extends EventEmitter<OrchestratorEvents> {
 
   private abort(reason: string): void {
     this.state.status = "aborted";
+    this.state.endTime = new Date();
     this.state.lastMessage = reason;
     this.state.waitingUntil = null;
     appendDebugLog("orchestrator:abort", {

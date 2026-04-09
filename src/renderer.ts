@@ -411,7 +411,9 @@ export function buildFrameCells(
   terminalWidth: number,
   terminalHeight: number,
 ): Cell[][] {
-  const elapsed = formatElapsed(now - state.startTime.getTime());
+  const elapsed = formatElapsed(
+    (state.endTime?.getTime() ?? now) - state.startTime.getTime(),
+  );
   const reservedBottomRows = 2;
   const availableHeight = Math.max(0, terminalHeight - reservedBottomRows);
   const contentRows = buildContentCells(
